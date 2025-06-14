@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Heat Index Dashboard and Controls (HIDC)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --info-color: #17a2b8;
+            --light-bg: #f8f9fa;
+            --dark-bg: #343a40;
+            --text-color: #333;
+            --border-color: #dee2e6;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+
+            /* Heat Stress Colors */
+            --flag-green: #28a745;    /* Safe / Low */
+            --flag-yellow: #ffc107;   /* Moderate */
+            --flag-orange: #fd7e14;   /* High */
+            --flag-red: #dc3545;      /* Very High */
+            --flag-black: #343a40;    /* Extreme */
+
+            /* Urine Chart Colors - Only 6 as requested */
+            --urine-color-1: #fef08a; /* Pale Yellow */
+            --urine-color-2: #ffe066; /* Light Yellow */
+            --urine-color-3: #ffc107; /* Yellow */
+            --urine-color-4: #ffa000; /* Dark Yellow */
+            --urine-color-5: #e65100; /* Amber */
+            --urine-color-6: #bf360c; /* Brownish Orange */
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--light-bg);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px var(--shadow-color);
+            width: 100%;
+            max-width: 800px;
+            margin-bottom: 20px;
+            display: none; /* Crucial: All main sections are hidden by default, and shown with .active */
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .container.active {
+            display: flex; /* Show when active */
+        }
+
+        h1, h2, h3 {
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .app-title {
+            text-align: center;
+            font-size: 2.5em; /* Bigger font as requested */
+            margin-bottom: 30px;
+            color: var(--primary-color);
+            width: 100%;
+        }
+
+        /* Buttons */
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button#clearBtn { background-color: var(--danger-color); }
+        button#clearBtn:hover { background-color: #c82333; }
+        button#undoBtn { background-color: var(--secondary-color); }
+        button#undoBtn:hover { background-color: #5a6268; }
+        button#exportLogBtn { background-color: var(--success-color); }
+        button#exportLogBtn:hover { background-color: #218838; }
+
+        /* Initial Choice Buttons - Symmetrical Square Layout */
+        .initial-choice-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(2, 1fr);
+            gap: 20px;
+            width: 100%;
+            max-width: 600px; /* Adjust as needed for symmetry */
+            margin-top: 20px;
+        }
+
+        .initial-choice-grid button {
+            width: 100%;
+            padding: 25px 15px; /* Adjust padding for square appearance */
+            font-size: 1.1em;
+            height: 150px; /* Fixed height to enforce square */
+            flex-direction: column; /* Stack icon and text */
+            gap: 10px;
+            border-radius: 12px; /* More rounded corners for modern look */
+        }
+
+        .initial-choice-grid button i {
+            font-size: 2.5em; /* Larger icons */
+            margin-bottom: 5px;
+        }
+        /* Login Screen specific styles */
+        #loginScreen .input-group {
+            width: 100%;
+            max-width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        #loginScreen .input-group label {
+            font-weight: bold;
+            text-align: left;
+            width: 100%;
+        }
+        #loginScreen input[type="text"],
+        #loginScreen select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            font-size: 1em;
+            box-sizing: border-box;
+        }
+        #loginScreen button {
+            width: 200px; /* Symmetrical button */
+            padding: 12px 20px;
+            font-size: 1em;
+        }
+
+
+        /* Worker Dashboard Specific Styles */
+        .worker-dashboard .button-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 20px;
+        }
+        
+        @media (min-width: 600px) {
+            .worker-dashboard .button-grid.grid-3-col {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .worker-dashboard .button-grid button {
+            min-width: unset;
+            width: 100%;
+            padding: 20px 15px;
+            font-size: 1.1em;
+            height: 100px;
+            text-align: center;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .worker-dashboard .button-grid button i {
+            font-size: 1.8em;
+        }
+
+        /* Worker Dashboard Back Button - Smaller and Lower */
+        .worker-dashboard .back-button {
+            padding: 8px 15px;
+            font-size: 0.9em;
+            align-self: flex-start;
+            margin-top: 30px;
+        }
+
+        /* Article Carousel Section (New) */
+        .article-carousel-section {
+            width: 100%;
+            max-width: 600px;
+            background-color: var(--light-bg);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+            min-height: 200px; /* Ensure space for content */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden; /* For carousel effect */
+            position: relative;
+        }
+
+        .article-carousel-section h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: var(--primary-color);
+        }
+
+        .article-content {
+            font-size: 1.1em;
+            color: var(--text-color);
+            margin-bottom: 15px;
+            line-height: 1.6;
+            transition: opacity 0.5s ease-in-out; /* Smooth fade for articles */
+            text-align: justify;
+        }
+        .carousel-navigation {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .carousel-navigation button {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            font-size: 0.9em;
+        }
+
+        .carousel-navigation button:hover {
+            background-color: var(--primary-color);
+        }
+
+
+        /* Emergency Contact Display */
+        #emergencyContactInfo {
+            background-color: var(--info-color);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none; /* Hidden by default */
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        #emergencyContactInfo p {
+            margin: 0;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        #emergencyContactInfo a {
+            color: white;
+            text-decoration: underline;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        #emergencyContactInfo .disclaimer {
+            font-size: 0.85em;
+            opacity: 0.9;
+        }
+
+
+        /* Button Feedback */
+        .button-success-flash {
+            animation: successFlash 0.5s ease-out;
+        }
+
+        @keyframes successFlash {
+            0% { background-color: var(--primary-color); transform: scale(1); }
+            50% { background-color: var(--success-color); transform: scale(1.02); }
+            100% { background-color: var(--primary-color); transform: scale(1); }
+        }
+
+        .temp-message {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: var(--success-color);
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .temp-message.show {
+            opacity: 1;
+        }
+
+        /* Rest Schedule Table (Shared styling, but specific usage in each dashboard) */
+        .rest-schedule-section {
+            width: 100%;
+            max-width: 600px;
+            background-color: var(--light-bg);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+            display: none; /* Initially hidden for worker dashboard, shown with JS */
+        }
+
+        .rest-schedule-section.active {
+            display: block; /* Show when active */
+        }
+
+        .rest-schedule-section h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: var(--text-color);
+        }
+
+        .rest-schedule-section table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .rest-schedule-section th, .rest-schedule-section td {
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        .rest-schedule-section th {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        /* Safety Officer Interface - Compressed & Left Aligned Inputs */
+        .safety-dashboard .input-row {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            width: 100%;
+            max-width: 300px;
+            margin-bottom: 2px;
+            justify-content: flex-start;
+        }
+
+        .safety-dashboard .input-row label {
+            min-width: 90px;
+            text-align: left;
+            white-space: nowrap;
+            font-weight: bold;
+            font-size: 0.9em;
+            flex-shrink: 0;
+        }
+
+        .safety-dashboard input[type=number],
+        .safety-dashboard input[type=password],
+        .safety-dashboard input[type=tel] {
+            width: 75px;
+            padding: 4px 6px;
+            font-size: 0.8em;
+            margin-bottom: 0;
+            text-align: right;
+            flex-shrink: 0;
+        }
+        
+        .safety-dashboard #heatIndex {
+            background-color: var(--light-bg);
+            cursor: default;
+        }
+
+        /* Unit Selector */
+        .safety-dashboard .input-row select {
+            padding: 4px 6px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            font-size: 0.8em;
+            flex-shrink: 0;
+        }
+
+        /* Safety Officer Buttons - Symmetrical and Weather Station below */
+        .safety-dashboard .button-group {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            width: 100%;
+            max-width: 450px;
+            margin-top: 20px;
+        }
+
+        .safety-dashboard .button-group button {
+            padding: 10px 15px;
+            font-size: 0.9em;
+            white-space: nowrap;
+        }
+        
+        .safety-dashboard .weather-station-button-container {
+            width: 100%;
+            max-width: 450px;
+            margin-top: 10px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .safety-dashboard #safetyWeatherStationBtn {
+            width: 100%;
+            padding: 10px 20px;
+            font-size: 0.95em;
+        }
+
+        /* General input styling */
+        input[type=number],
+        input[type=text], /* Added for name input */
+        input[type=password],
+        input[type=tel],
+        select { /* Added select here */
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type=number]:focus,
+        input[type=text]:focus, /* Added for name input */
+        input[type=password]:focus,
+        input[type=tel]:focus,
+        select:focus { /* Added select here */
+            border-color: var(--primary-color);
+            outline: none;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+
+        /* Table Styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            text-align: center;
+            font-size: 0.85em;
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: bold;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: var(--light-bg);
+        }
+
+        tbody tr:hover {
+            background-color: #e9ecef;
+        }
+
+        /* Highlight current row in safety rest schedule */
+        .safety-dashboard .rest-schedule-section table .highlight-row {
+            background-color: #e6f7ff;
+            font-weight: bold;
+        }
+
+        .flag-box {
+            width: 30px;
+            height: 20px;
+            margin: 0 auto;
+            border-radius: 4px;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            display: inline-block; /* Allow flag to be next to text if needed */
+            vertical-align: middle;
+        }
+        .flag-box.green { background-color: var(--flag-green); }
+        .flag-box.yellow { background-color: var(--flag-yellow); }
+        .flag-box.orange { background-color: var(--flag-orange); }
+        .flag-box.red { background-color: var(--flag-red); }
+        .flag-box.black { background-color: var(--flag-black); }
+
+
+        /* Modals */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.6);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: auto;
+            padding: 30px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            position: relative;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            cursor: pointer;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: #333;
+            text-decoration: none;
+        }
+
+        .modal-content h3 {
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+
+        .modal-content p {
+            margin-bottom: 10px;
+            line-height: 1.6;
+        }
+
+        .modal-content ul {
+            padding-left: 20px;
+            list-style: disc;
+        }
+
+        .modal-content li {
+            margin-bottom: 5px;
+        }
+        
+        /* Back button styling for general use - smaller and lower is handled by specific rules */
+        .back-button {
+            background-color: var(--secondary-color);
+            margin-top: 20px;
+            align-self: center;
+        }
+        .back-button:hover {
+            background-color: #5a6268;
+        }
+
+        /* Urine Chart Specific Styles */
+        .urine-chart-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px 15px;
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .urine-chart-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .urine-color-box {
+            width: 40px;
+            height: 30px;
+            border-radius: 5px;
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            flex-shrink: 0;
+        }
+
+        .urine-description {
+            font-size: 0.9em;
+            color: var(--text-color);
+        }
+
+        /* Self-Check Questions Styling */
+        .self-check-question {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            background-color: var(--light-bg);
+        }
+        .self-check-question p {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .self-check-question label {
+            margin-right: 15px;
+            font-size: 0.9em;
+        }
+        .self-check-question input[type="radio"],
+        .self-check-question select {
+            margin-right: 5px;
+        }
+
+        /* Safety Dashboard interactive table (2 rows) */
+        .safety-dashboard .interactive-rest-schedule-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background-color: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .safety-dashboard .interactive-rest-schedule-table th,
+        .safety-dashboard .interactive-rest-schedule-table td {
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+        .safety-dashboard .interactive-rest-schedule-table th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: bold;
+        }
+
+        /* Toast Message Styling */
+        .toast-message {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--info-color);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 1002;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            animation: slideIn 0.5s forwards, fadeOut 3s forwards 2s;
+            min-width: 250px;
+            text-align: center;
+        }
+
+        @keyframes slideIn {
+            from { top: 0; opacity: 0; }
+            to { top: 20px; opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        .toast-message.warning {
+            background-color: var(--warning-color);
+        }
+
+        .toast-message.danger {
+            background-color: var(--danger-color);
+        }
+
+        /* Heat Index Trend Analysis Section */
+        .trend-analysis-section {
+            width: 100%;
+            max-width: 450px;
+            background-color: var(--light-bg);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+        }
+
+        .trend-analysis-section h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: var(--text-color);
+        }
+
+        .trend-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .trend-icon {
+            font-size: 1.5em;
+            color: var(--primary-color);
+        }
+
+        .trend-icon.rising {
+            color: var(--danger-color);
+        }
+
+        .trend-icon.falling {
+            color: var(--success-color);
+        }
+
+        .trend-icon.stable {
+            color: var(--info-color);
+        }
+
+        .trend-values {
+            font-size: 0.9em;
+            color: var(--secondary-color);
+            margin-top: 5px;
+        }
+        
+        /* Heat Index Calculator Section */
+        #heatIndexCalculatorSection {
+            width: 100%;
+            max-width: 450px;
+            background-color: var(--light-bg);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        #heatIndexCalculatorSection .input-row {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        #heatIndexCalculatorSection .input-row label {
+            flex-shrink: 0;
+            font-weight: bold;
+            text-align: right; /* Right align labels */
+            width: 120px; /* Fixed width for labels to align inputs */
+        }
+
+        #heatIndexCalculatorSection .input-row input {
+            flex-grow: 1;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            text-align: left; /* Left align inputs */
+            min-width: 100px;
+        }
+
+        #heatIndexCalculatorSection .input-row .unit-selector {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+
+        #heatIndexCalculatorSection .input-row select {
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+        }
+
+        #heatIndexCalculatorSection #calculatorHeatIndex {
+            background-color: var(--light-bg);
+            cursor: default;
+        }
+        #calculatorMessages {
+            color: var(--danger-color);
+            font-size: 0.9em;
+            margin-top: -10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h1 class="app-title">Heat Index Dashboard and Controls (HIDC)</h1>
+
+    <div class="container active" id="loginScreen">
+        <h2>Please Enter Your Details</h2>
+        <div class="input-group">
+            <label for="userName">Name:</label>
+            <input type="text" id="userName" placeholder="Your Name">
+        </div>
+        <div class="input-group">
+            <label for="companyName">Company:</label>
+            <select id="companyName">
+                <option value="" disabled selected>Select Company</option>
+                <option value="TK/TCC">TK/TCC</option>
+                <option value="TDPCO">TDPCO</option>
+            </select>
+        </div>
+        <button id="proceedBtn">Proceed</button>
+    </div>
+
+    <div class="container" id="initialChoice">
+        <div class="initial-choice-grid">
+            <button id="controlBtn"><i class="fas fa-sliders-h"></i> Control</button>
+            <button id="dashboardBtn"><i class="fas fa-chart-line"></i> Dashboard</button>
+            <button id="initialWeatherStationBtn" onclick="window.open('https://www.wunderground.com/dashboard/pws/IDUBA9', '_blank')"><i class="fas fa-cloud-sun"></i> Weather Station</button>
+            <button id="heatIndexCalcBtn"><i class="fas fa-calculator"></i> Heat Index Calculator</button>
+        </div>
+    </div>
+
+    <div class="container worker-dashboard" id="workerDashboard">
+        <p id="welcomeMessageWorker" style="text-align: left; font-size: 0.9em; margin-bottom: 5px;"></p>
+        
+        <div id="articleASection" class="article-carousel-section">
+            <h3>Health and Safety Articles</h3>
+            <div id="currentArticle" class="article-content"></div>
+            <div class="carousel-navigation">
+                <button id="prevArticleBtn">Previous</button>
+                <button id="nextArticleBtn">Next</button>
+            </div>
+        </div>
+
+        <button id="toggleWorkerRestScheduleBtn"><i class="fas fa-calendar-alt"></i> Show Rest Schedule</button>
+        <div class="rest-schedule-section" id="workerRestScheduleSection">
+            <h3>General Rest Schedule Guidelines</h3>
+            <table id="fixedRestScheduleTable">
+                <thead>
+                    <tr>
+                        <th>Heat Advisory Level</th>
+                        <th>Work Duration</th>
+                        <th>Break Duration</th>
+                    </tr>
+                </thead>
+                <tbody id="fixedRestScheduleTableBody">
+                    <tr>
+                        <td><span class="flag-box green"></span> Green</td>
+                        <td>Normal Work Schedule</td>
+                        <td>None</td>
+                    </tr>
+                    <tr>
+                        <td><span class="flag-box yellow"></span> Yellow</td>
+                        <td>60 min Work</td>
+                        <td>10 min Break</td>
+                    </tr>
+                    <tr>
+                        <td><span class="flag-box orange"></span> Orange</td>
+                        <td>45 min Work</td>
+                        <td>10 min Break</td>
+                    </tr>
+                    <tr>
+                        <td><span class="flag-box red"></span> Red</td>
+                        <td>30 min Work</td>
+                        <td>10 min Break</td>
+                    </tr>
+                    <tr>
+                        <td><span class="flag-box black"></span> Black</td>
+                        <td>Work Suspended</td>
+                        <td>--</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="button-grid grid-3-col">
+            <button id="selfCheckBtn"><i class="fas fa-clipboard-check"></i> Heat Stress Self-Check</button>
+            <button id="emergencyContactBtn"><i class="fas fa-phone-alt"></i> Emergency Contact</button>
+            <button id="firstAidBtn"><i class="fas fa-medkit"></i> First Aid for Hot Weather</button>
+            <button id="symptomsBtn"><i class="fas fa-thermometer-half"></i> Heat Illness Symptoms</button>
+            <button id="workerWeatherStationBtn" onclick="window.open('https://www.wunderground.com/dashboard/pws/IDUBA9', '_blank')"><i class="fas fa-cloud-sun"></i> Weather Station</button>
+            <button id="urineChartBtn"><i class="fas fa-tint"></i> Urine Color Chart</button>
+        </div>
+
+        <div id="emergencyContactInfo">
+            <p id="emergencyContactDialer"></p>
+            <span class="disclaimer">In case of emergency, immediately dial the number.</span>
+            <span class="disclaimer">Disclaimer: This contact is provided for emergencies only. Do not misuse.</span>
+        </div>
+
+        <button class="back-button" onclick="showInitialChoice()">Back</button>
+    </div>
+
+    <div class="container safety-dashboard" id="safetyDashboard">
+        <h2>Heat Index Dashboard and Controls (HIDC)</h2>
+        <div class="input-row">
+            <label for="temp">Temperature:</label>
+            <input type="number" id="temp" step="0.1" placeholder="Enter Temp" />
+            <select id="tempUnit">
+                <option value="C">°C</option>
+                <option value="F">°F</option>
+            </select>
+        </div>
+        <div class="input-row">
+            <label for="humidity">Humidity (%):</label>
+            <input type="number" id="humidity" step="0.1" min="0" max="100" placeholder="Enter Humidity" />
+        </div>
+        <div class="input-row">
+            <label for="heatIndex">Heat Index:</label>
+            <input type="number" id="heatIndex" readonly placeholder="Calculated Auto" />
+            <span id="heatIndexUnit">°C</span>
+        </div>
+        <div class="button-group">
+            <button id="logBtn">Log</button>
+            <button id="clearBtn">Clear Log</button>
+            <button id="undoBtn">Undo Last</button>
+        </div>
+        <div class="weather-station-button-container">
+            <button id="safetyWeatherStationBtn" onclick="window.open('https://www.wunderground.com/dashboard/pws/IDUBA9', '_blank')"><i class="fas fa-cloud-sun"></i> Weather Station</button>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Temp</th>
+                    <th>Humidity</th>
+                    <th>Heat Index</th>
+                    <th>Flag</th>
+                </tr>
+            </thead>
+            <tbody id="logTableBody">
+            </tbody>
+        </table>
+
+        <div class="rest-schedule-section active" style="margin-top: 30px;">
+            <h3>Heat Stress Rest & Work Schedule (Current Advisory: <span id="safetyCurrentAdvisoryHI">N/A</span>)</h3>
+            <table id="safetyRestScheduleTable" class="interactive-rest-schedule-table">
+                <thead>
+                    <tr>
+                        <th>Heat Advisory Level</th>
+                        <th>Heat Index Range</th>
+                        <th>Work Duration (per hour)</th>
+                        <th>Break Duration (per hour)</th>
+                    </tr>
+                </thead>
+                <tbody id="safetyRestScheduleTableBody">
+                    <tr>
+                        <td><span class="flag-box green"></span> Green</td>
+                        <td>&lt; 26.7°C (80°F)</td>
+                        <td>Normal Work Schedule</td>
+                        <td>None</td>
+                    </tr>
+                    <tr>
+                        <td><span class="flag-box yellow"></span> Yellow</td>
+                        <td>26.7-29.4°C (80-85°F)</td>
+                        <td>60 min Work</td>
+                        <td>10 min Break</td>
+                    </tr>
+                    <tr>
+                        <td><span class="flag-box orange"></span> Orange</td>
+                        <td>29.5-32.2°C (85.1-90°F)</td>
+                        <td>45 min Work</td>
+                        <td>10 min Break</td>
+                    </tr>
+                    <tr>
+                        <td><span class="flag-box red"></span> Red</td>
+                        <td>32.3-35.0°C (90.1-95°F)</td>
+                        <td>30 min Work</td>
+                        <td>10 min Break</td>
+                    </tr>
+                    <tr>
+                        <td><span class="flag-box black"></span> Black</td>
+                        <td>> 35.0°C (95°F)</td>
+                        <td>Work Suspended</td>
+                        <td>--</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="trend-analysis-section">
+            <h3>Heat Index Trend</h3>
+            <div class="trend-display">
+                <span id="trendIcon" class="trend-icon"></span>
+                <span id="trendText">Stable</span>
+            </div>
+            <p id="trendValues"></p>
+        </div>
+
+        <button class="back-button" onclick="showInitialChoice()">Back</button>
+    </div>
+
+    <div class="container" id="heatIndexCalculatorView">
+        <h2>Heat Index Calculator</h2>
+        <div id="heatIndexCalculatorSection">
+            <div class="input-row">
+                <label for="calculatorTemp">Temperature:</label>
+                <input type="number" id="calculatorTemp" step="0.1" placeholder="Enter Temperature" />
+                <div class="unit-selector">
+                    <select id="calculatorTempUnit">
+                        <option value="C">°C</option>
+                        <option value="F">°F</option>
+                    </select>
+                </div>
+            </div>
+            <div class="input-row">
+                <label for="calculatorHumidity">Humidity (%):</label>
+                <input type="number" id="calculatorHumidity" step="0.1" min="0" max="100" placeholder="Enter Humidity" />
+            </div>
+            <div class="input-row">
+                <label for="calculatorHeatIndex">Heat Index:</label>
+                <input type="number" id="calculatorHeatIndex" readonly placeholder="Calculated Automatically" />
+                <span id="calculatorHeatIndexUnit">°C</span>
+            </div>
+            <p id="calculatorMessages" style="display:none;"></p>
+        </div>
+        <button class="back-button" onclick="showInitialChoice()">Back</button>
+    </div>
+
+    <div id="urineChartModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal('urineChartModal')">&times;</span>
+            <h3>Urine Color Chart</h3>
+            <div class="urine-chart-grid">
+                <div class="urine-chart-item">
+                    <div class="urine-color-box" style="background-color: var(--urine-color-1);"></div>
+                    <span class="urine-description">1: Well hydrated (Pale Yellow)</span>
+                </div>
+                <div class="urine-chart-item">
+                    <div class="urine-color-box" style="background-color: var(--urine-color-2);"></div>
+                    <span class="urine-description">2: Well hydrated (Light Yellow)</span>
+                </div>
+                <div class="urine-chart-item">
+                    <div class="urine-color-box" style="background-color: var(--urine-color-3);"></div>
+                    <span class="urine-description">3: Hydrated (Yellow)</span>
+                </div>
+                <div class="urine-chart-item">
+                    <div class="urine-color-box" style="background-color: var(--urine-color-4);"></div>
+                    <span class="urine-description">4: Dehydrated (Dark Yellow)</span>
+                </div>
+                <div class="urine-chart-item">
+                    <div class="urine-color-box" style="background-color: var(--urine-color-5);"></div>
+                    <span class="urine-description">5: Dehydrated (Amber)</span>
+                </div>
+                <div class="urine-chart-item">
+                    <div class="urine-color-box" style="background-color: var(--urine-color-6);"></div>
+                    <span class="urine-description">6: Significant dehydration (Brownish Orange)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="selfCheckModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal('selfCheckModal')">&times;</span>
+            <h3>Heat Stress Self-Check</h3>
+            <div class="self-check-question">
+                <p>Are you experiencing any of these symptoms?</p>
+                <label><input type="radio" name="symptom" value="yes"> Yes</label>
+                <label><input type="radio" name="symptom" value="no" checked> No</label>
+            </div>
+            <div class="self-check-question">
+                <p>How much water have you consumed today?</p>
+                <label><input type="radio" name="water" value="little"> Little/None</label>
+                <label><input type="radio" name="water" value="some"> Some</label>
+                <label><input type="radio" name="water" value="adequate" checked> Adequate</label>
+            </div>
+            <div class="self-check-question">
+                <p>How do you feel overall?</p>
+                <select id="overallFeeling">
+                    <option value="great">Great</option>
+                    <option value="tired">Tired</option>
+                    <option value="dizzy">Dizzy</option>
+                    <option value="nauseous">Nauseous</option>
+                </select>
+            </div>
+            <button onclick="performSelfCheck()">Submit Self-Check</button>
+            <div id="selfCheckResult" style="margin-top: 20px; text-align: left;"></div>
+        </div>
+    </div>
+
+    <div id="firstAidModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal('firstAidModal')">&times;</span>
+            <h3>First Aid for Hot Weather</h3>
+            <h4>Heat Exhaustion:</h4>
+            <ul>
+                <li>Move to a cool place.</li>
+                <li>Loosen clothing.</li>
+                <li>Sip water or sports drink.</li>
+                <li>Apply cool, wet cloths.</li>
+            </ul>
+            <h4>Heat Stroke (Emergency! Call 911/Emergency Contact):</h4>
+            <ul>
+                <li>Call for immediate medical help.</li>
+                <li>Move to a cooler area.</li>
+                <li>Cool the person rapidly (e.g., with cool water, ice packs).</li>
+                <li>Do NOT give fluids if unconscious.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="symptomsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeModal('symptomsModal')">&times;</span>
+            <h3>Heat Illness Symptoms</h3>
+            <h4>Heat Cramps:</h4>
+            <ul>
+                <li>Muscle spasms, usually in legs/abdomen.</li>
+                <li>Often after heavy exercise in heat.</li>
+            </ul>
+            <h4>Heat Exhaustion:</h4>
+            <ul>
+                <li>Heavy sweating, cold/clammy skin.</li>
+                <li>Fast, weak pulse.</li>
+                <li>Nausea, vomiting, muscle cramps.</li>
+                <li>Tiredness, weakness, headache.</li>
+                <li>Fainting, dizziness.</li>
+            </ul>
+            <h4>Heat Stroke (Medical Emergency!):</h4>
+            <ul>
+                <li>Body temperature 103°F (39.4°C) or higher.</li>
+                <li>Hot, red, dry or damp skin.</li>
+                <li>Fast, strong pulse.</li>
+                <li>Headache, dizziness, nausea.</li>
+                <li>Confusion, slurred speech.</li>
+                <li>Loss of consciousness.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="toastMessage" class="toast-message"></div>
+
+    <script>
+        const loginScreen = document.getElementById('loginScreen');
+        const initialChoice = document.getElementById('initialChoice');
+        const workerDashboard = document.getElementById('workerDashboard');
+        const safetyDashboard = document.getElementById('safetyDashboard');
+        const heatIndexCalculatorView = document.getElementById('heatIndexCalculatorView');
+
+        const userNameInput = document.getElementById('userName');
+        const companyNameSelect = document.getElementById('companyName');
+        const proceedBtn = document.getElementById('proceedBtn');
+        const welcomeMessageWorker = document.getElementById('welcomeMessageWorker');
+
+        const controlBtn = document.getElementById('controlBtn');
+        const dashboardBtn = document.getElementById('dashboardBtn');
+        const heatIndexCalcBtn = document.getElementById('heatIndexCalcBtn');
+        
+        const emergencyContactBtn = document.getElementById('emergencyContactBtn');
+        const emergencyContactInfo = document.getElementById('emergencyContactInfo');
+        const emergencyContactDialer = document.getElementById('emergencyContactDialer');
+
+        const urineChartBtn = document.getElementById('urineChartBtn');
+        const urineChartModal = document.getElementById('urineChartModal');
+        const selfCheckBtn = document.getElementById('selfCheckBtn');
+        const selfCheckModal = document.getElementById('selfCheckModal');
+        const firstAidBtn = document.getElementById('firstAidBtn');
+        const firstAidModal = document.getElementById('firstAidModal');
+        const symptomsBtn = document.getElementById('symptomsBtn');
+        const symptomsModal = document.getElementById('symptomsModal');
+
+        const toggleWorkerRestScheduleBtn = document.getElementById('toggleWorkerRestScheduleBtn');
+        const workerRestScheduleSection = document.getElementById('workerRestScheduleSection');
+
+        // Safety Dashboard Elements
+        const tempInput = document.getElementById('temp');
+        const humidityInput = document.getElementById('humidity');
+        const heatIndexOutput = document.getElementById('heatIndex');
+        const tempUnitSelect = document.getElementById('tempUnit');
+        const heatIndexUnitSpan = document.getElementById('heatIndexUnit');
+        const logBtn = document.getElementById('logBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const undoBtn = document.getElementById('undoBtn');
+        const logTableBody = document.getElementById('logTableBody');
+        const safetyCurrentAdvisoryHI = document.getElementById('safetyCurrentAdvisoryHI');
+        const safetyRestScheduleTableBody = document.getElementById('safetyRestScheduleTableBody');
+        const trendIcon = document.getElementById('trendIcon');
+        const trendText = document.getElementById('trendText');
+        const trendValues = document.getElementById('trendValues');
+
+        // Heat Index Calculator Elements
+        const calculatorTempInput = document.getElementById('calculatorTemp');
+        const calculatorHumidityInput = document.getElementById('calculatorHumidity');
+        const calculatorHeatIndexOutput = document.getElementById('calculatorHeatIndex');
+        const calculatorTempUnitSelect = document.getElementById('calculatorTempUnit');
+        const calculatorHeatIndexUnitSpan = document.getElementById('calculatorHeatIndexUnit');
+        const calculatorMessages = document.getElementById('calculatorMessages');
+
+
+        let heatIndexLog = JSON.parse(localStorage.getItem('heatIndexLog')) || [];
+        const MAX_LOG_ENTRIES = 10;
+
+        const articles = [
+            "Saudi Arabia work ban under direct sunlight from June 15 to September 15. Employers must provide shaded resting areas.",
+            "Medical advice on heatstroke prevention: Stay hydrated, avoid prolonged sun exposure, and recognize early symptoms like dizziness and nausea.",
+            "Hydration education: Drink plenty of H2O or electrolyte-rich beverages regularly. For construction workers in the Middle East, consistent hydration is crucial due to extreme heat and physical exertion. Ensuring adequate fluid intake prevents heat stress and maintains productivity on site.",
+            "Emergency heatwave preparedness: Have a plan for checking on vulnerable individuals, know the locations of cooling centers, and prepare emergency kits with water and first-aid supplies.",
+            "Recognizing signs of dehydration: Symptoms include thirst, dry mouth, infrequent urination, and fatigue. Dark urine color also indicates dehydration.",
+            "Importance of proper work-rest cycles: Implementing regular breaks in shaded areas can significantly reduce the risk of heat-related illnesses.",
+            "First aid for heat cramps: Rest in a cool place, gently stretch the affected muscle, and drink clear juice or a sports beverage. Avoid salt tablets.",
+            "Heat stress and medication: Certain medications can increase sensitivity to heat. Consult a doctor if you are on medication and working in hot environments.",
+            "Clothing for hot weather: Wear light-colored, loose-fitting clothing made of breathable fabrics like cotton to help your body cool naturally.",
+            "Acclimatization to heat: Gradually increase exposure to hot environments to allow your body to adapt. This is essential for new workers in hot climates.",
+            "Impact of humidity on heat perception: High humidity makes the heat index feel hotter because sweat evaporates slower, reducing the body's natural cooling mechanism.",
+            "Nutrition and heat: Eat light meals and avoid heavy, protein-rich foods that can increase metabolic heat production. Focus on fruits and vegetables.",
+            "Safety tips for working outdoors: Schedule strenuous tasks during cooler parts of the day, use buddy systems, and ensure immediate access to water.",
+            "Understanding UV index: Protect your skin from harmful UV rays by using sunscreen, wearing hats, and seeking shade, especially during peak hours.",
+            "Cooling towels and vests: These can provide temporary relief in hot conditions by promoting evaporative cooling on the skin.",
+            "Emergency contacts for remote sites: Ensure all workers have access to emergency contact numbers and understand the protocol for reporting heat-related incidents.",
+            "The role of electrolytes: Replenishing electrolytes lost through sweat is vital to prevent muscle cramps and maintain fluid balance, especially during prolonged activity.",
+            "Heat stress in confined spaces: Working in enclosed areas without proper ventilation significantly increases heat stress risk. Ensure adequate airflow and frequent breaks.",
+            "Importance of pre-hydration: Start hydrating before beginning work in hot conditions, and continue drinking water throughout the day.",
+            "Preventing heat rash: Keep skin dry and clean, and wear moisture-wicking clothing. Cool showers can also help.",
+            "Safe use of fans: Fans can help in moderate heat, but in extreme heat, they might circulate hot air and exacerbate dehydration. Combine with other cooling methods.",
+            "Recognizing personal risk factors: Age, underlying health conditions, and fitness levels can affect an individual's susceptibility to heat stress.",
+            "Proper storage of water on site: Ensure drinking water is kept in cool, shaded areas to prevent it from heating up, encouraging regular consumption.",
+            "Guidelines for using shade structures: Permanent or temporary shade structures should be readily available for all outdoor workers to use during breaks.",
+            "Monitoring children and the elderly during heatwaves: These groups are particularly vulnerable to heat-related illnesses and require extra care and hydration.",
+            "Pets and hot weather: Ensure pets have access to fresh water and shade. Never leave pets in parked cars.",
+            "The importance of rest: Rest is as crucial as hydration in preventing heat stress. Short, frequent breaks are more effective than long, infrequent ones.",
+            "How to respond to a heat stroke victim: Immediately call emergency services, move them to a cooler place, and begin active cooling measures while waiting for help.",
+            "Community resources during extreme heat: Know about local cooling centers, public pools, and libraries that offer respite during heatwaves.",
+            "Vehicle heat safety: Never leave anyone, especially children or pets, in a parked car, even for a short time. Temperatures can rise rapidly.",
+            "Symptoms of sunstroke: Headache, nausea, dizziness, and hot, dry skin can indicate sunstroke. Seek shade and rehydrate immediately.",
+            "Importance of training: All workers exposed to heat should receive regular training on heat stress prevention, recognition, and first aid.",
+            "Heat acclimatization program benefits: Improves body's ability to tolerate heat, reduces core body temperature, and lowers heart rate during work.",
+            "Wearing appropriate PPE: While necessary, some PPE can contribute to heat stress. Ensure it's breathable and consider alternatives when possible.",
+            "Outdoor recreation safety in heat: Plan activities during cooler hours, stay hydrated, and be aware of your physical limits.",
+            "Understanding heat alerts: Pay attention to local weather advisories and warnings, such as excessive heat warnings, and adjust activities accordingly.",
+            "First aid for severe sunburn: Cool the skin with water, take pain relievers, and seek medical attention if blistering is severe.",
+            "The impact of reflective surfaces: Working near highly reflective surfaces like sand or concrete can increase heat exposure. Use appropriate barriers or PPE.",
+            "Regular medical check-ups: Regular health screenings can help identify underlying conditions that might increase heat stress risk.",
+            "Heat stress during Ramadan in the Middle East: For fasting individuals, special precautions are needed regarding work schedules and rehydration during non-fasting hours."
+        ];
+        let currentArticleIndex = 0;
+
+        function showArticle(index) {
+            const currentArticleDiv = document.getElementById('currentArticle');
+            if (currentArticleDiv) {
+                currentArticleDiv.style.opacity = 0;
+                setTimeout(() => {
+                    currentArticleDiv.innerHTML = articles[index];
+                    currentArticleDiv.style.opacity = 1;
+                }, 300); // Fade out then fade in
+            }
+        }
+
+        document.getElementById('prevArticleBtn').addEventListener('click', () => {
+            currentArticleIndex = (currentArticleIndex - 1 + articles.length) % articles.length;
+            showArticle(currentArticleIndex);
+        });
+
+        document.getElementById('nextArticleBtn').addEventListener('click', () => {
+            currentArticleIndex = (currentArticleIndex + 1) % articles.length;
+            showArticle(currentArticleIndex);
+        });
+
+
+        // Initial display logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const storedUserName = localStorage.getItem('userName');
+            const storedCompanyName = localStorage.getItem('companyName');
+
+            if (storedUserName && storedCompanyName) {
+                // User already logged in, skip login screen
+                showInitialChoice();
+            } else {
+                showLoginScreen();
+            }
+
+            // Display the first article
+            showArticle(currentArticleIndex);
+            updateRestScheduleTable();
+            updateSafetyRestScheduleTable();
+        });
+
+        proceedBtn.addEventListener('click', () => {
+            const userName = userNameInput.value.trim();
+            const companyName = companyNameSelect.value;
+
+            if (userName && companyName) {
+                localStorage.setItem('userName', userName);
+                localStorage.setItem('companyName', companyName);
+
+                let emergencyContact = {
+                    name: "",
+                    number: ""
+                };
+                if (companyName === "TK/TCC") {
+                    emergencyContact.name = "Elhosiny";
+                    emergencyContact.number = "+966537238062";
+                } else if (companyName === "TDPCO") {
+                    emergencyContact.name = "Faisal";
+                    emergencyContact.number = "+966580760934";
+                }
+                localStorage.setItem('emergencyContactName', emergencyContact.name);
+                localStorage.setItem('emergencyContactNumber', emergencyContact.number);
+
+                showInitialChoice();
+            } else {
+                alert('Please fill in all fields (Name and Company).');
+            }
+        });
+
+        controlBtn.addEventListener('click', showSafetyDashboard);
+        dashboardBtn.addEventListener('click', showWorkerDashboard);
+        heatIndexCalcBtn.addEventListener('click', showHeatIndexCalculator);
+
+        // Function to show specific container and hide others
+        function showContainer(containerToShow) {
+            [loginScreen, initialChoice, workerDashboard, safetyDashboard, heatIndexCalculatorView].forEach(container => {
+                container.classList.remove('active');
+            });
+            containerToShow.classList.add('active');
+        }
+
+        function showLoginScreen() {
+            showContainer(loginScreen);
+        }
+
+        function showInitialChoice() {
+            showContainer(initialChoice);
+        }
+
+        function showWorkerDashboard() {
+            const userName = localStorage.getItem('userName');
+            welcomeMessageWorker.textContent = `Welcome, ${userName}!`;
+            showContainer(workerDashboard);
+        }
+
+        function showSafetyDashboard() {
+            showContainer(safetyDashboard);
+            // Re-render log table on showing safety dashboard
+            renderLogTable();
+            updateSafetyRestScheduleHighlight();
+            updateHeatIndexTrend();
+        }
+
+        function showHeatIndexCalculator() {
+            showContainer(heatIndexCalculatorView);
+            // Clear inputs when showing the calculator
+            calculatorTempInput.value = '';
+            calculatorHumidityInput.value = '';
+            calculatorHeatIndexOutput.value = '';
+            calculatorMessages.style.display = 'none';
+        }
+
+        // Emergency Contact Button Logic
+        emergencyContactBtn.addEventListener('click', () => {
+            const contactName = localStorage.getItem('emergencyContactName');
+            const contactNumber = localStorage.getItem('emergencyContactNumber');
+            
+            if (contactName && contactNumber) {
+                emergencyContactDialer.innerHTML = `Emergency Contact: <a href="tel:${contactNumber}">${contactName} ${contactNumber}</a>`;
+                emergencyContactInfo.style.display = 'flex'; // Show the info div
+            } else {
+                emergencyContactDialer.textContent = "Emergency contact not set. Please complete initial setup.";
+                emergencyContactInfo.style.display = 'flex';
+            }
+        });
+
+        // Hide emergency contact info when navigating away from worker dashboard
+        workerDashboard.addEventListener('DOMCanceled', () => { // Using a custom event or mutation observer to detect hiding
+            emergencyContactInfo.style.display = 'none';
+        });
+
+        // Rest Schedule Toggle for Worker Dashboard
+        toggleWorkerRestScheduleBtn.addEventListener('click', () => {
+            workerRestScheduleSection.classList.toggle('active');
+            toggleWorkerRestScheduleBtn.querySelector('i').classList.toggle('fa-calendar-alt');
+            toggleWorkerRestScheduleBtn.querySelector('i').classList.toggle('fa-times-circle'); // Example icon change
+            toggleWorkerRestScheduleBtn.innerHTML = workerRestScheduleSection.classList.contains('active') ? '<i class="fas fa-times-circle"></i> Hide Rest Schedule' : '<i class="fas fa-calendar-alt"></i> Show Rest Schedule';
+        });
+
+        // Modals functionality
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        urineChartBtn.addEventListener('click', () => openModal('urineChartModal'));
+        selfCheckBtn.addEventListener('click', () => openModal('selfCheckModal'));
+        firstAidBtn.addEventListener('click', () => openModal('firstAidModal'));
+        symptomsBtn.addEventListener('click', () => openModal('symptomsModal'));
+
+        // Self-Check Logic
+        function performSelfCheck() {
+            const symptomYes = document.querySelector('input[name="symptom"][value="yes"]').checked;
+            const waterConsumption = document.querySelector('input[name="water"]:checked').value;
+            const overallFeeling = document.getElementById('overallFeeling').value;
+            const selfCheckResultDiv = document.getElementById('selfCheckResult');
+            selfCheckResultDiv.innerHTML = ''; // Clear previous results
+
+            let advice = [];
+
+            if (symptomYes || overallFeeling === 'dizzy' || overallFeeling === 'nauseous') {
+                advice.push("You are experiencing heat stress symptoms. Immediately seek shade and rest. Consider seeking medical attention.");
+            } else if (waterConsumption === 'little' || overallFeeling === 'tired') {
+                advice.push("You have a high risk of heat stress. Immediately increase fluid intake, take frequent and extended breaks, and consider reducing work intensity.");
+            } else if (waterConsumption === 'some') {
+                advice.push("You have a moderate risk of heat stress. Ensure adequate hydration and regular breaks. Pay attention to your body's signals.");
+            } else {
+                advice.push("You seem to have a low risk of heat stress. Please continue to hydrate regularly and take planned breaks.");
+            }
+
+            if (symptomYes || overallFeeling === 'dizzy' || overallFeeling === 'nauseous') {
+                advice.push("It's important to seek medical help if symptoms persist or worsen.");
+            }
+            if (waterConsumption === 'little' || waterConsumption === 'some') {
+                advice.push("Action: Increase fluid intake. Drink H2O or electrolyte-rich beverages regularly.");
+            }
+            
+            selfCheckResultDiv.innerHTML = advice.map(item => `<p>${item}</p>`).join('');
+        }
+
+
+        // Safety Dashboard - Heat Index Calculation and Logging
+        function calculateHeatIndex(T, RH) {
+            if (T === '' || RH === '') return '';
+
+            T = parseFloat(T);
+            RH = parseFloat(RH);
+
+            // Steadman's formula for Heat Index (simplified for demonstration)
+            // This is a common approximation. More complex formulas exist.
+            const c1 = -42.379;
+            const c2 = 2.04901523;
+            const c3 = 10.14333127;
+            const c4 = -0.22475541;
+            const c5 = -6.83783e-3;
+            const c6 = -5.481717e-2;
+            const c7 = 1.22874e-3;
+            const c8 = 8.5282e-4;
+            const c9 = -1.99e-6;
+
+            let HI = c1 + c2 * T + c3 * RH + c4 * T * RH + c5 * T * T + c6 * RH * RH + c7 * T * T * RH + c8 * T * RH * RH + c9 * T * T * RH * RH;
+            return HI.toFixed(1);
+        }
+
+        function convertTemp(value, unitFrom, unitTo) {
+            if (unitFrom === unitTo) return parseFloat(value);
+            if (unitFrom === 'C' && unitTo === 'F') {
+                return (parseFloat(value) * 9/5) + 32;
+            } else if (unitFrom === 'F' && unitTo === 'C') {
+                return (parseFloat(value) - 32) * 5/9;
+            }
+            return parseFloat(value);
+        }
+
+        function updateSafetyHeatIndex() {
+            let temp = tempInput.value;
+            let humidity = humidityInput.value;
+            let currentTempUnit = tempUnitSelect.value;
+
+            if (temp !== '' && humidity !== '') {
+                // Convert temperature to Fahrenheit for calculation if necessary (formula often uses F)
+                let tempF = currentTempUnit === 'C' ? convertTemp(temp, 'C', 'F') : parseFloat(temp);
+                let hiF = calculateHeatIndex(tempF, humidity);
+
+                let hiDisplay = hiF;
+                let hiUnit = '°F';
+
+                // Convert HI back to Celsius if the display unit is Celsius
+                if (currentTempUnit === 'C') {
+                    hiDisplay = convertTemp(hiF, 'F', 'C').toFixed(1);
+                    hiUnit = '°C';
+                }
+
+                heatIndexOutput.value = hiDisplay;
+                heatIndexUnitSpan.textContent = hiUnit;
+            } else {
+                heatIndexOutput.value = '';
+            }
+            updateSafetyRestScheduleHighlight();
+        }
+
+        tempInput.addEventListener('input', updateSafetyHeatIndex);
+        humidityInput.addEventListener('input', updateSafetyHeatIndex);
+        tempUnitSelect.addEventListener('change', updateSafetyHeatIndex);
+
+        logBtn.addEventListener('click', () => {
+            const temp = tempInput.value;
+            const humidity = humidityInput.value;
+            const heatIndex = heatIndexOutput.value;
+            const tempUnit = tempUnitSelect.value; // Store the unit with the log
+
+            if (temp && humidity && heatIndex) {
+                const now = new Date();
+                const timestamp = now.toLocaleString();
+                let flagColor = getHeatFlagColor(tempUnit === 'C' ? parseFloat(heatIndex) : convertTemp(heatIndex, 'F', 'C'));
+
+                const newEntry = {
+                    timestamp,
+                    temp: `${temp}°${tempUnit}`,
+                    humidity: `${humidity}%`,
+                    heatIndex: `${heatIndex}°${tempUnit}`,
+                    flag: flagColor
+                };
+
+                heatIndexLog.unshift(newEntry); // Add to the beginning
+                if (heatIndexLog.length > MAX_LOG_ENTRIES) {
+                    heatIndexLog = heatIndexLog.slice(0, MAX_LOG_ENTRIES); // Keep only the latest MAX_LOG_ENTRIES
+                }
+                localStorage.setItem('heatIndexLog', JSON.stringify(heatIndexLog));
+                renderLogTable();
+                showToast('Heat index logged successfully!', 'success');
+                updateHeatIndexTrend();
+            } else {
+                showToast('Please enter valid temperature and humidity.', 'danger');
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            if (confirm('Are you sure you want to clear all log entries? This action cannot be undone.')) {
+                heatIndexLog = [];
+                localStorage.removeItem('heatIndexLog');
+                renderLogTable();
+                showToast('Log cleared successfully!', 'info');
+                updateHeatIndexTrend();
+            }
+        });
+
+        undoBtn.addEventListener('click', () => {
+            if (heatIndexLog.length > 0) {
+                heatIndexLog.shift(); // Remove the last added entry
+                localStorage.setItem('heatIndexLog', JSON.stringify(heatIndexLog));
+                renderLogTable();
+                showToast('Last entry undone.', 'warning');
+                updateHeatIndexTrend();
+            } else {
+                showToast('No entries to undo.', 'info');
+            }
+        });
+
+        function renderLogTable() {
+            logTableBody.innerHTML = '';
+            heatIndexLog.forEach(entry => {
+                const row = logTableBody.insertRow();
+                row.insertCell().textContent = entry.timestamp;
+                row.insertCell().textContent = entry.temp;
+                row.insertCell().textContent = entry.humidity;
+                row.insertCell().textContent = entry.heatIndex;
+                const flagCell = row.insertCell();
+                flagCell.innerHTML = `<span class="flag-box ${entry.flag}"></span>`;
+            });
+        }
+
+        function getHeatFlagColor(heatIndexC) {
+            if (heatIndexC < 26.7) return 'green';
+            if (heatIndexC >= 26.7 && heatIndexC <= 29.4) return 'yellow';
+            if (heatIndexC >= 29.5 && heatIndexC <= 32.2) return 'orange';
+            if (heatIndexC >= 32.3 && heatIndexC <= 35.0) return 'red';
+            if (heatIndexC > 35.0) return 'black';
+            return ''; // Default or error case
+        }
+
+        // Update Rest Schedule Tables
+        function updateRestScheduleTable() {
+            // The fixed table is directly in HTML now, so no dynamic update needed for that one
+        }
+
+        function updateSafetyRestScheduleTable() {
+            // The fixed table is directly in HTML now, so no dynamic update needed for that one
+        }
+
+        function updateSafetyRestScheduleHighlight() {
+            const currentHI = parseFloat(heatIndexOutput.value);
+            const currentUnit = heatIndexUnitSpan.textContent === '°C' ? 'C' : 'F';
+            let currentHIC = currentHI;
+
+            if (currentUnit === 'F') {
+                currentHIC = convertTemp(currentHI, 'F', 'C');
+            }
+
+            const rows = safetyRestScheduleTable.querySelectorAll('tbody tr');
+            rows.forEach(row => {
+                row.classList.remove('highlight-row');
+                const rangeText = row.cells[1].textContent; // Get the range text
+                
+                let minC, maxC;
+                if (rangeText.includes('<')) {
+                    maxC = parseFloat(rangeText.split('< ')[1].split('°')[0]);
+                    minC = -Infinity;
+                } else if (rangeText.includes('>')) {
+                    minC = parseFloat(rangeText.split('> ')[1].split('°')[0]);
+                    maxC = Infinity;
+                } else {
+                    const parts = rangeText.split('-').map(s => parseFloat(s.split('°')[0]));
+                    minC = parts[0];
+                    maxC = parts[1];
+                }
+
+                if (currentHIC >= minC && currentHIC <= maxC) {
+                    row.classList.add('highlight-row');
+                    safetyCurrentAdvisoryHI.textContent = row.cells[0].textContent; // Update current advisory display
+                }
+            });
+        }
+
+
+        // Heat Index Trend Analysis
+        function updateHeatIndexTrend() {
+            if (heatIndexLog.length < 2) {
+                trendText.textContent = 'Stable';
+                trendIcon.className = 'trend-icon stable fas fa-equals'; // Default stable icon
+                trendValues.textContent = 'Not enough data for trend analysis.';
+                return;
+            }
+
+            const latestHI = parseFloat(heatIndexLog[0].heatIndex.split('°')[0]);
+            const secondLatestHI = parseFloat(heatIndexLog[1].heatIndex.split('°')[0]);
+
+            let trend = 'Stable';
+            let iconClass = 'fas fa-equals';
+            let colorClass = 'stable';
+
+            if (latestHI > secondLatestHI) {
+                trend = 'Rising Trend';
+                iconClass = 'fas fa-arrow-up';
+                colorClass = 'rising';
+            } else if (latestHI < secondLatestHI) {
+                trend = 'Falling Trend';
+                iconClass = 'fas fa-arrow-down';
+                colorClass = 'falling';
+            }
+
+            trendText.textContent = trend;
+            trendIcon.className = `trend-icon ${colorClass} ${iconClass}`;
+            trendValues.textContent = `Latest: ${heatIndexLog[0].heatIndex}, Previous: ${heatIndexLog[1].heatIndex}`;
+        }
+
+        // Toast Message
+        function showToast(message, type = 'info', duration = 3000) {
+            const toast = document.getElementById('toastMessage');
+            toast.textContent = message;
+            toast.className = `toast-message ${type}`; // Reset classes and add type
+            toast.style.opacity = 1; // Ensure visible for animation
+            toast.style.animation = 'slideIn 0.5s forwards, fadeOut 0.5s forwards ' + (duration / 1000 - 0.5) + 's';
+
+            clearTimeout(toast.timeoutId); // Clear any existing timeout
+            toast.timeoutId = setTimeout(() => {
+                toast.style.opacity = 0;
+            }, duration);
+        }
+
+        // Heat Index Calculator Logic (new section)
+        function updateCalculatorHeatIndex() {
+            let temp = calculatorTempInput.value;
+            let humidity = calculatorHumidityInput.value;
+            let hi = calculatorHeatIndexOutput.value;
+
+            let messages = [];
+
+            // Check which fields are filled
+            const isTempFilled = temp !== '';
+            const isHumidityFilled = humidity !== '';
+            const isHiFilled = hi !== '';
+
+            calculatorMessages.style.display = 'none';
+            calculatorMessages.textContent = '';
+            
+            // Convert to Fahrenheit for calculation if needed
+            let currentTempUnit = calculatorTempUnitSelect.value;
+            let tempF;
+
+            if (isTempFilled) {
+                tempF = currentTempUnit === 'C' ? convertTemp(temp, 'C', 'F') : parseFloat(temp);
+            }
+
+            // Case 1: Temp and Humidity are entered, calculate HI
+            if (isTempFilled && isHumidityFilled) {
+                let calculatedHiF = calculateHeatIndex(tempF, parseFloat(humidity));
+                let displayHi = currentTempUnit === 'C' ? convertTemp(calculatedHiF, 'F', 'C').toFixed(1) : calculatedHiF;
+                calculatorHeatIndexOutput.value = displayHi;
+                calculatorHeatIndexUnitSpan.textContent = currentTempUnit;
+            }
+            // Case 2: Temp and HI are entered, calculate Humidity (more complex, not a direct formula inverse)
+            // This would require an iterative solver for the Heat Index formula.
+            // For simplicity, we'll indicate it's not directly supported for this calculator.
+            else if (isTempFilled && isHiFilled) {
+                calculatorHeatIndexOutput.value = ''; // Clear HI as it's the input now
+                messages.push("To calculate humidity, use an external tool or formula. This calculator supports Temperature & Humidity to Heat Index.");
+            }
+            // Case 3: Humidity and HI are entered, calculate Temperature (same as above)
+            else if (isHumidityFilled && isHiFilled) {
+                calculatorHeatIndexOutput.value = ''; // Clear HI as it's the input now
+                messages.push("To calculate temperature, use an external tool or formula. This calculator supports Temperature & Humidity to Heat Index.");
+            }
+            else {
+                // No two values, clear heat index
+                calculatorHeatIndexOutput.value = '';
+            }
+
+            if (messages.length > 0) {
+                calculatorMessages.textContent = messages.join('\n');
+                calculatorMessages.style.display = 'block';
+            }
+        }
+
+        calculatorTempInput.addEventListener('input', updateCalculatorHeatIndex);
+        calculatorHumidityInput.addEventListener('input', updateCalculatorHeatIndex);
+        calculatorTempUnitSelect.addEventListener('change', updateCalculatorHeatIndex);
+        // If the user manually edits the heat index field, clear it as it's an output field.
+        calculatorHeatIndexOutput.addEventListener('input', (event) => {
+            event.target.value = '';
+            calculatorMessages.textContent = "Heat Index is calculated automatically based on Temperature and Humidity.";
+            calculatorMessages.style.display = 'block';
+        });
+
+    </script>
+</body>
+</html>
